@@ -1,5 +1,5 @@
 import { Button, Stack } from "@mui/material";
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import ROSLIB from "roslib";
 import Message from "../message.tsx";
 import { shared } from "./shared.ts";
@@ -7,6 +7,7 @@ import PopUp from "./PopUp.tsx";
 
 export const MuiButton = () => {
   const [ros, setRos] = useState(null);
+  const botClientRef = useRef(null); // Use ref to store botClient
   useEffect(() => { }, []);
 
   useEffect(() => {
@@ -29,36 +30,49 @@ export const MuiButton = () => {
     };
   }, []);
 
+
+  useEffect(() => {
+    if (ros) {
+      // Initialize botClient when ROS is available
+      botClientRef.current = new ROSLIB.Action({
+        ros: ros,
+        name: "/execute_exp",
+        actionType: "ras_interfaces/ExecuteExp",
+      });
+    }
+  }, [ros]); // Depend on `ros`
+
   const RealClick = () => {
-    var botClient = new ROSLIB.Action({
-      ros: ros,
-      name: "/execute_exp",
-      actionType: "ras_interfaces/ExecuteExp",
-    });
+    console.log("real arm button clicked")
 
     // Send an action goal
     var goal = new ROSLIB.ActionGoal({});
+    if (botClientRef.current === null) {
+      console.log("botClientRef.current is null");
+      return
+    }
 
-    var goal_id = botClient.sendGoal(
+    var goal_id = botClientRef.current.sendGoal(
       goal,
       function (result) {
         console.log(
           "Result for action goal on " +
-          botClient.name +
+          botClientRef.current.name +
           ": " +
-          result.result.success
+          result.success
         );
       },
       function (feedback) {
         console.log(
           "Feedback for action on " +
-          botClient.name +
+          botClientRef.current.name +
           ": " +
           feedback.picked_object
         );
       }
     );
   };
+  
   const [open, setOpen] = useState(false);
   const LoadClick = () => {
     const value1 = shared.get("inputA");
